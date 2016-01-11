@@ -53,4 +53,23 @@ cookie
 *   _UP_L_=zh; 
 *   yunsess=uc%40F8337675828D466DE75CCB306054E568
 
+####getInfo [get]
+http://disk.yun.uc.cn/netdisk/ajaxnd?dirid=1&type=all&_=1452510063928
+http://disk.yun.uc.cn/netdisk/ajaxnd?dirid=12684307629012874241&type=all&_=1452511564621
+__in__
+
+cookie
+*   s_uid=D41D8CD98F;
+*   mode=list; 
+*   _UP_F7E_8D_="ENNewQLhj3C/qiEmOD8FSvjdGzlxqy3HGUOU+WEa1/CQ9pt/lxcgspx/7jdZxm88C0IpclYaolOv+Rantbfg1mWGAUpRMP4RqXP78Wvu/CfvkWWGc5NhCTV71tGOIGgDBR3+u6/jj46m8qZLyz8cvkLsWIKP3YLXZ6Vv++WIQKENqkM+G0wgRw=="; 
+*   _UP_D_=pc; 
+*   _UP_L_=zh; 
+*   __ln=bTkwAE7kyeZ0BkI1bfxn%2BP2rGlvd1r3mEFKX; 
+*   yunsess=uc%40EA1AD193323A989AE17BE80CBE0407C9; 
+*   netdisk_vip=LTE%3D
+
+
+####download
+http://uc.dl.django.t.taobao.com/rest/1.0/file?token=P2_L-RgQM2t3apRwvZdMjAABUYAAAAFSMF7WLAAAABcAAQED&link-type=download-pc-low&fileIds=TTqHlpiuR6qbHtX8YtF0bgAAABcAAQID&timestamp=1452511575&uID=475607984&name=%5B%E6%94%BB%E3%82%81%E3%81%A7%E5%AD%97%E5%B9%95%E7%BB%84%5D%E5%A5%BD%E3%81%8D%E3%81%A7%E5%A5%BD%E3%81%8D%E3%81%A7%E3%80%81%E3%81%99%E3%81%8D%E3%81%A7+THE+ANIMATION+Pretty.1.mp4&r=mov&imei=&fr=&acl=a1ad9bdb10a1cb3c092fcdfcc8e63511
+
 
