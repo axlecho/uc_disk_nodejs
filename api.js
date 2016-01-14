@@ -3,6 +3,8 @@ var qs = require('querystring');
 var fs = require('fs')
 var debug = true;
 
+var cookieManger = {};
+
 function getTimeStamp() {
 	return new Date().getTime();
 }
@@ -69,7 +71,7 @@ function getCaptcha(captchaId,cb) {
 		var statusCode = res.statusCode;
 		var headers = JSON.parse(JSON.stringify(res.headers));
 		var cookies = headers['set-cookie'];
-		var writestream = fs.createWriteStream('temp');
+		var writestream = fs.createWriteStream('temp.png');
         writestream.on('close', function() {
             cb('ok');
         });
@@ -84,5 +86,69 @@ function getCaptcha(captchaId,cb) {
 	req.end();
 	
 }
+
+function login(name,pass,code,codeId,cb) {
+	var post_data = {
+		login_name:name,
+		password:pass,
+		captcha_code:code,
+		captchaId:codeId
+	};
+	var content = qs.stringify(post_data);
+	if(debug) {
+	    console.log(content);
+	}
+	
+	var param = {
+		v:'1.1',
+		client_id:'54',
+		request_id:getTimeStamp()
+	};
+	
+	var ucHost = 'api.open.uc.cn';
+	var loginPath = '/cas/loginByIframe?';
+	var path = loginPath + qs.stringify(param);
+	if(debug) {
+		console.log(path);
+	}
+	
+	var options = {
+		hostname: ucHost,
+		path:loginPath + qs.stringify(param),
+		method: 'POST',
+	};
+	var req = http.request(options,function(res) {
+		var statusCode = res.statusCode;
+		var headers = JSON.parse(JSON.stringify(res.headers));
+		var cookies = headers['set-cookie'];
+		praseCookie(cookies);
+		if(debug) {
+			console.log(headers);
+		}
+		cb(cookies);
+	});
+	
+	req.on('error', function (e) {
+		console.log('problem with request: ' + e.message);
+	});
+
+	// write data to request body
+	req.write(content);
+	req.end();
+	
+}
+
+function praseCookie(cookies) {
+	cookies.forEach(function(cookie) {
+		var parts = cookie.split(';')[0].split('=');
+		cookieManger[ parts[ 0 ].trim() ] = ( parts[ 1 ] || '' ).trim();
+	});
+	
+	if(debug) {
+		console.log(cookieManger);
+	}
+}
+
+exports.login = login;
 exports.getCaptchaId = getCaptchaId;
 exports.getCaptcha = getCaptcha;
