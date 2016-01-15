@@ -13,7 +13,7 @@ api.getCaptchaId(function (captchaId) {
 
 process.stdin.setEncoding('utf8');
 
-process.stdin.on('readable', () => {
+process.stdin.on('readable', function() {
 	var captcha = process.stdin.read();
 	//captcha = captcha.replace('\n','');
 	console.log(captcha);
@@ -21,9 +21,9 @@ process.stdin.on('readable', () => {
 	var user = 'axlecho@126.com';
 	var pass = '!me433978029';
 	
-	api.login(user,pass,captcha,mCaptchaId,() => {});
+	api.login(user,pass,captcha,mCaptchaId,function() {});
 });
 
-process.stdin.on('end', () => {
+process.stdin.on('end', function() {
   process.stdout.write('end');
 });
