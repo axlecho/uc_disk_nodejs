@@ -4,7 +4,7 @@ var fs = require('fs');
 var Q = require('q');
 var zlib = require('zlib');
 
-var debug = false;
+var debug = true;
 var silent = false;
 var cookieManger = {
 	//'mode':'list',
@@ -169,11 +169,12 @@ function login(name,pass,code) {
 		
 		res.on('end',function() {
 			var ret = praseServiceTicket(decodeURIComponent(chunks));
-			if(ret.status != 20000) {
-				deferred.reject(ret.message);
-				return;
+			if(ret.status == 20000) {
+				deferred.resolve();
 			}
-			deferred.resolve();
+			console.log('[login] login failed:' + ret[',message']);
+			deferred.reject(ret[',message']);
+			return;
 		});
 	});
 	
@@ -285,7 +286,7 @@ function getDirInfo(dir) {
 		if(debug) {
 			console.log('======= [getDirInfo] headers =======');
 			console.log(headers);
-			console.log('=============================================');
+			console.log('====================================');
 		}
 		if(!silent) {
 			console.log('[getDirInfo] status:' + statusCode);
@@ -300,7 +301,11 @@ function getDirInfo(dir) {
 			var buffer = Buffer.concat(chunks);
 			zlib.gunzip(buffer, function (err, decoded) {
 				var result = decoded.toString();
-				console.log(result);
+				if(debug) {
+					console.log('======= [getDirInfo] result =======');
+					console.log(result);
+					console.log('===================================');
+				}
 				deferred.resolve(result);
 			});
 
@@ -408,8 +413,44 @@ function setLn() {
 	return deferred.promise;
 }
 
+function downloadFile(info) {
+
+    var deferred = Q.defer();
+	var url = info.download;
+	var name = info.shortname;
+	
+	if (debug) {
+		console.log('====== [downloadFile] info ======');
+		console.log(info);
+		console.log('=================================');
+	}
+	
+	var req = http.get(url,function(res) {
+		var statusCode = res.statusCode;
+		var headers = JSON.parse(JSON.stringify(res.headers));
+		var cookies = headers['set-cookie'];
+		
+		if(!silent) {
+			console.log('[downloadFile] status:' + statusCode);
+		}
+		
+		var writestream = fs.createWriteStream(name);
+        writestream.on('close', function() {
+			deferred.resolve();
+        });
+        res.pipe(writestream);
+	});
+
+	req.on('error', function (e) {
+		deferred.reject('[downloadFile] problem with request: ' + e.message);
+	});
+	req.end();
+	
+	return deferred.promise;	
+}
 exports.login = login;
 exports.getCaptcha = getCaptcha;
 exports.getDirInfo = getDirInfo;
 exports.setServiceTicket = setServiceTicket;
 exports.setLn = setLn;
+exports.downloadFile = downloadFile;

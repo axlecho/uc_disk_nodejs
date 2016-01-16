@@ -1,29 +1,47 @@
 var api = require('./api.js');
+var mCaptchaId = '';
+var zlib = require('zlib');
 
-api.getCaptcha();
-api.login();
-api.setServiceTicket();
-api.setLn();
-api.getDirInfo('1');
+api.getCaptcha()
+.then(function() {
+		setRead();
+	},function(error) {
+		console.log(error) ;
+	});
 
 
-var fsReadFile_deferd = function(file,encoding){
-  var deferred = Q.defer();
-  FS.readFile(file,encoding,function(error,result){
-  if(error){
-    deferred.reject(error.toString().red);
-  }
-  deferred.resolve(result);
-});
+function setRead() {
+	process.stdin.setEncoding('utf8');
 
-return deferred.promise;
-};
+	process.stdin.on('readable', function() {
+		var captcha = process.stdin.read();
+		if (captcha == null || captcha == undefined || captcha == '') { 
+			return;
+		}
 
-fsReadFile_deferd(file).then(function(result){
-  console.log("invoke in deferd".red);
-  console.log(result.toString().green);
-},function(error){
-  console.log("invoke in deferd".red);
-  console.log(error.toString().red);
+		captcha = captcha.replace(/\s+/g, '')
+		var user = 'axlecho@126.com';
+		var pass = '!me433978029';
+		api.login(user,pass,captcha).then(
+			function() { return api.setServiceTicket();},
+			function(error) { console.log(error.toString()); }
+		).then(
+			function() { return api.setLn();},
+			function(error) { console.log(error.toString()); }
+		).then(
+			function() { return api.getDirInfo('1');},
+			function(error) { console.log(error.toString()); }
+		).then(
+			function(result) { console.log(decoded.toString());},
+			function(error)  { console.log(error.toString()); }
+		);
+		
+		process.stdin.resume();
+		process.stdin.pause();
+		process.stdin.destroy();
+	});
+
+	process.stdin.on('end', function() {
+	  process.stdout.write('end');
+	});
 }
-);
