@@ -73,7 +73,7 @@ function getCaptcha(captchaId,cb) {
 		var cookies = headers['set-cookie'];
 		var writestream = fs.createWriteStream('temp.png');
         writestream.on('close', function() {
-            cb('ok');
+            cb('get Captcha done');
         });
         res.pipe(writestream);
 	});
@@ -92,7 +92,7 @@ function login(name,pass,code,codeId,cb) {
 		login_name:name,
 		password:pass,
 		captcha_code:code,
-		captchaId:codeId
+		captcha_id:codeId
 	};
 	var content = qs.stringify(post_data);
 	if(debug) {
@@ -116,6 +116,9 @@ function login(name,pass,code,codeId,cb) {
 		hostname: ucHost,
 		path:loginPath + qs.stringify(param),
 		method: 'POST',
+		headers: {  
+            "Content-Type": 'application/x-www-form-urlencoded'
+        }  
 	};
 	var req = http.request(options,function(res) {
 		var statusCode = res.statusCode;
@@ -125,7 +128,9 @@ function login(name,pass,code,codeId,cb) {
 		if(debug) {
 			console.log(headers);
 		}
-		cb(cookies);
+		res.on('data', function (chunk) {  
+			cb(chunk);
+		});
 	});
 	
 	req.on('error', function (e) {
@@ -133,7 +138,7 @@ function login(name,pass,code,codeId,cb) {
 	});
 
 	// write data to request body
-	req.write(content);
+	req.write(content +  '\n');
 	req.end();
 	
 }

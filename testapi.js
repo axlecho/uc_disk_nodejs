@@ -15,13 +15,17 @@ process.stdin.setEncoding('utf8');
 
 process.stdin.on('readable', function() {
 	var captcha = process.stdin.read();
-	//captcha = captcha.replace('\n','');
+	if (captcha == null || captcha == undefined || captcha == '') { 
+		return;
+	}
+	captcha = captcha.replace(/\s+/g, '')
 	console.log(captcha);
-	
 	var user = 'axlecho@126.com';
 	var pass = '!me433978029';
 	
-	api.login(user,pass,captcha,mCaptchaId,function() {});
+	api.login(user,pass,captcha,mCaptchaId,function(data) {
+		console.log(decodeURIComponent(data.toString()));
+	});
 });
 
 process.stdin.on('end', function() {
