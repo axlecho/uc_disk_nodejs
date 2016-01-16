@@ -2,6 +2,7 @@ var http = require('http');
 var qs = require('querystring');  
 var fs = require('fs')
 var debug = true;
+var silent = false;
 
 var cookieManger = {};
 
@@ -10,24 +11,23 @@ function getTimeStamp() {
 }
 
 function getCaptchaId(cb) {
-	var host = 'api.open.uc.cn';
-	var data = {
+	var hostname = 'api.open.uc.cn';
+	
+	var urlparam = {
 		captchaId:'',
 		callback:'',
 		_:getTimeStamp()
 	};
 	
-	var content = qs.stringify(data);  
-	var getCaptchaIdPath = '/cas/commonjson/refreshCaptchaByIframe?' + content;
+	var path = '/cas/commonjson/refreshCaptchaByIframe?' + qs.stringify(urlparam);
 		
-	
 	if (debug) {
-		console.log(getCaptchaIdPath);
+		console.log('[getCaptchaId] url:' + hostname + path);
 	}
 	
 	var options = {
-		hostname:host,
-		path:getCaptchaIdPath,
+		hostname:hostname,
+		path:path,
 		method:'get'
 	};
 	
@@ -35,35 +35,38 @@ function getCaptchaId(cb) {
 		var statusCode = res.statusCode;
 		var headers = JSON.parse(JSON.stringify(res.headers));
 		var cookies = headers['set-cookie'];
-		console.log(statusCode);
+		
+		if(!silent) {
+			console.log('[getCaptchaId] status:' + statusCode);
+		}
+		
 		res.on('data', function (chunk) {  
 			cb(chunk);
 		});
 	});
 
 	req.on('error', function (e) {
-		console.log('problem with request: ' + e.message);
+		console.log('[getCaptchaId] problem with request: ' + e.message);
 	});
 	
-
 	req.end();
 }
 
 function getCaptcha(captchaId,cb) {
-	var host = 'api.open.uc.cn';
-	var data = {
+	var hostname = 'api.open.uc.cn';
+	var urlparam = {
 		captchaId:captchaId
 	};
 	
-	var content = qs.stringify(data);  
-	var getCaptchaPath = '/cas/commonjson/captcha?' + content;
+	var path = '/cas/commonjson/captcha?' +  qs.stringify(urlparam);
+	
 	if (debug) {
-		console.log(getCaptchaPath);
+		console.log('[getCaptcha] url:' + hostname + path);
 	}
 	
 	var options = {
-		hostname:host,
-		path:getCaptchaPath,
+		hostname:hostname,
+		path:path,
 		method:'get'
 	};
 	
@@ -71,62 +74,55 @@ function getCaptcha(captchaId,cb) {
 		var statusCode = res.statusCode;
 		var headers = JSON.parse(JSON.stringify(res.headers));
 		var cookies = headers['set-cookie'];
+		
+		if(!silent) {
+			console.log('[getCaptcha] status:' + statusCode);
+		}
+		
 		var writestream = fs.createWriteStream('temp.png');
         writestream.on('close', function() {
-            cb('get Captcha done');
+            cb();
         });
         res.pipe(writestream);
 	});
 
 	req.on('error', function (e) {
-		console.log('problem with request: ' + e.message);
+		console.log('[getCaptcha] problem with request:' + e.message);
 	});
 	
-
 	req.end();
 	
 }
 
 function login(name,pass,code,codeId,cb) {
-	var post_data = {
-		login_name:name,
-		password:pass,
-		captcha_code:code,
-		captcha_id:codeId
-	};
-	var content = qs.stringify(post_data);
-	if(debug) {
-	    console.log(content);
-	}
-	
-	var param = {
+	var hostname = 'api.open.uc.cn';
+	var urlparam = {
 		v:'1.1',
 		client_id:'54',
 		request_id:getTimeStamp()
 	};
 	
-	var ucHost = 'api.open.uc.cn';
-	var loginPath = '/cas/loginByIframe?';
-	var path = loginPath + qs.stringify(param);
+	var path = '/cas/loginByIframe?' + qs.stringify(urlparam);
 	if(debug) {
-		console.log(path);
+		console.log('[login] url:' + hostname + path);
 	}
 	
 	var options = {
-		hostname: ucHost,
-		path:loginPath + qs.stringify(param),
+		hostname: hostname,
+		path:path,
 		method: 'POST',
 		headers: {  
             "Content-Type": 'application/x-www-form-urlencoded'
         }  
 	};
+	
 	var req = http.request(options,function(res) {
 		var statusCode = res.statusCode;
 		var headers = JSON.parse(JSON.stringify(res.headers));
 		var cookies = headers['set-cookie'];
 		praseCookie(cookies);
-		if(debug) {
-			console.log(headers);
+		if(!silent) {
+			console.log('[login] status:' + statusCode);
 		}
 		res.on('data', function (chunk) {  
 			cb(chunk);
@@ -134,11 +130,22 @@ function login(name,pass,code,codeId,cb) {
 	});
 	
 	req.on('error', function (e) {
-		console.log('problem with request: ' + e.message);
+		console.log('[login] problem with request:' + e.message);
 	});
 
-	// write data to request body
-	req.write(content +  '\n');
+	
+	var content = {
+		login_name:name,
+		password:pass,
+		captcha_code:code,
+		captcha_id:codeId
+	};
+	var postdata = qs.stringify(content);
+	
+	if(debug) {
+	    console.log('[login] post data:' + postdata);
+	}
+	req.write(postdata +  '\n');
 	req.end();
 	
 }
@@ -150,9 +157,14 @@ function praseCookie(cookies) {
 	});
 	
 	if(debug) {
+		console.log('======= [praseCookie] cookies =======');
 		console.log(cookieManger);
+		console.log('=====================================');
 	}
 }
+
+
+
 
 exports.login = login;
 exports.getCaptchaId = getCaptchaId;

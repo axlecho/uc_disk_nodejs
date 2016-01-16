@@ -4,10 +4,10 @@ var mCaptchaId = '';
 api.getCaptchaId(function (captchaId) {
 	captchaId  = captchaId.toString().split(':')[1]
 		.replace(')','').replace('}','').replace(new RegExp(/\'/g),'');
-	console.log(captchaId);
+	console.log('captchaId:' + captchaId);
 	mCaptchaId = captchaId;
 	api.getCaptcha(captchaId,function(res) {
-		console.log(res);
+		console.log('get chptcha done');
 	});
 });
 
@@ -19,7 +19,6 @@ process.stdin.on('readable', function() {
 		return;
 	}
 	captcha = captcha.replace(/\s+/g, '')
-	console.log(captcha);
 	var user = 'axlecho@126.com';
 	var pass = '!me433978029';
 	
