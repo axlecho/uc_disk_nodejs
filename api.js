@@ -1,30 +1,33 @@
 var http = require('http');
 var qs = require('querystring');  
-var fs = require('fs')
+var fs = require('fs');
+var Q = require('q');
+var zlib = require('zlib');
+
 var debug = false;
 var silent = false;
-
 var cookieManger = {
 	//'mode':'list',
 	//'netdisk_vip':'LTE=',
 	//'s_uid':'7200ED8C38'
 };
 
-var serviceTicket = "";
-
+var mServiceTicket = '';
+var mCaptchaId = ''
 function getTimeStamp() {
 	return new Date().getTime();
 }
 
-function getCaptchaId(cb) {
-	var hostname = 'api.open.uc.cn';
+function getCaptchaId() {
+
+    var deferred = Q.defer();
 	
+	var hostname = 'api.open.uc.cn';
 	var urlparam = {
 		captchaId:'',
 		callback:'',
 		_:getTimeStamp()
 	};
-	
 	var path = '/cas/commonjson/refreshCaptchaByIframe?' + qs.stringify(urlparam);
 		
 	if (debug) {
@@ -52,18 +55,20 @@ function getCaptchaId(cb) {
 		});
 		
 		res.on('end',function() {
-			cb(chunks);
+			deferred.resolve(chunks);
 		});
 	});
 
 	req.on('error', function (e) {
-		console.log('[getCaptchaId] problem with request: ' + e.message);
+		deferred.reject('[getCaptchaId] problem with request: ' + e.message);
 	});
-	
 	req.end();
+	
+	return deferred.promise;
 }
 
-function getCaptcha(captchaId,cb) {
+function getCaptchaImage(captchaId) {
+    var deferred = Q.defer();
 	var hostname = 'api.open.uc.cn';
 	var urlparam = {
 		captchaId:captchaId
@@ -92,20 +97,42 @@ function getCaptcha(captchaId,cb) {
 		
 		var writestream = fs.createWriteStream('temp.png');
         writestream.on('close', function() {
-            cb();
+			deferred.resolve();
         });
         res.pipe(writestream);
 	});
 
 	req.on('error', function (e) {
-		console.log('[getCaptcha] problem with request:' + e.message);
+		deferred.reject('[getCaptcha] problem with request:' + e.message);
 	});
 	
 	req.end();
-	
+	return deferred.promise;
 }
 
-function login(name,pass,code,codeId,cb) {
+function getCaptcha () {
+    var deferred = Q.defer();
+	getCaptchaId().then(
+		function(result){
+			mCaptchaId  = result.toString().split(':')[1]
+				.replace(')','').replace('}','').replace(new RegExp(/\'/g),'');
+			return getCaptchaImage(mCaptchaId);
+		},function(error){
+		  console.log(error.toString());
+		}
+	).then(
+		function(){
+			deferred.resolve();
+		},function(error){
+		  console.log(error.toString());
+		}
+	);
+	
+	return deferred.promise;
+}
+
+function login(name,pass,code) {
+    var deferred = Q.defer();
 	var hostname = 'api.open.uc.cn';
 	var urlparam = {
 		v:'1.1',
@@ -141,12 +168,17 @@ function login(name,pass,code,codeId,cb) {
 		});
 		
 		res.on('end',function() {
-			cb(chunks);
+			var ret = praseServiceTicket(decodeURIComponent(chunks));
+			if(ret.status != 20000) {
+				deferred.reject(ret.message);
+				return;
+			}
+			deferred.resolve();
 		});
 	});
 	
 	req.on('error', function (e) {
-		console.log('[login] problem with request:' + e.message);
+		deferred.reject('[login] problem with request:' + e.message);
 	});
 
 	
@@ -154,7 +186,7 @@ function login(name,pass,code,codeId,cb) {
 		login_name:name,
 		password:pass,
 		captcha_code:code,
-		captcha_id:codeId
+		captcha_id:mCaptchaId
 	};
 	var postdata = qs.stringify(content);
 	
@@ -163,7 +195,7 @@ function login(name,pass,code,codeId,cb) {
 	}
 	req.write(postdata +  '\n');
 	req.end();
-	
+	return deferred.promise;
 }
 
 function praseCookie(cookies) {
@@ -198,14 +230,17 @@ function praseServiceTicket(webdata) {
 		console.log('=============================================');
 	}
 	if(response.status == 20000) {
-		serviceTicket = response.data.service_ticket;
+		mServiceTicket = response.data.service_ticket;
+		if(debug) {
+			console.log('[praseServiceTicket] mServiceTicket:' + mServiceTicket);
+		}
 	}
-	if(debug) {
-		console.log('[praseServiceTicket] serviceTicket:' + serviceTicket);
-	}
+	
+	return response;
 }
 
-function getDirInfo(dir,cb) {
+function getDirInfo(dir) {
+    var deferred = Q.defer();
 	var hostname = 'disk.yun.uc.cn';
 	var urlparam = {
 		dirid:dir,
@@ -262,23 +297,30 @@ function getDirInfo(dir,cb) {
 		});
 		
 		res.on('end',function() {
-			cb(chunks);
+			var buffer = Buffer.concat(chunks);
+			zlib.gunzip(buffer, function (err, decoded) {
+				var result = decoded.toString();
+				console.log(result);
+				deferred.resolve(result);
+			});
+
 		});
 	});
 
 	req.on('error', function (e) {
-		console.log('[getCaptcha] problem with request:' + e.message);
+		deferred.reject('[getDirInfo] problem with request:' + e.message);
 	});
 	
 	req.end();
-	
+	return deferred.promise;
 }
 
-function setServiceTicket(cb) {
+function setServiceTicket() {
+    var deferred = Q.defer();
 	var hostname = 'yun.uc.cn';
 	
 	var urlparam = {
-		service_ticket:serviceTicket
+		service_ticket:mServiceTicket
 	};
 	
 	var path = '/exter/basicinfo?' + qs.stringify(urlparam);
@@ -308,18 +350,20 @@ function setServiceTicket(cb) {
 		});
 		
 		res.on('end',function() {
-			cb(chunks);
+			deferred.resolve();
 		});
 	});
 
 	req.on('error', function (e) {
-		console.log('[setServiceTicket] problem with request: ' + e.message);
+		deferred.reject('[setServiceTicket] problem with request: ' + e.message);
 	});
 	
 	req.end();
+	return deferred.promise;
 }
 
-function setLn(cb) {
+function setLn() {
+    var deferred = Q.defer();
 	var hostname = 'yun.uc.cn';
 	var path = '/index.php/netdisk_service/ajax/setLn';
 	if(debug) {
@@ -343,11 +387,11 @@ function setLn(cb) {
 		if(!silent) {
 			console.log('[setLn] status:' + statusCode);
 		}
-		cb();
+		deferred.resolve();
 	});
 	
 	req.on('error', function (e) {
-		console.log('[setLn] problem with request:' + e.message);
+		deferred.reject('[setLn] problem with request:' + e.message);
 	});
 
 	
@@ -357,84 +401,15 @@ function setLn(cb) {
 	var postdata = qs.stringify(content);
 	
 	if(debug) {
-	    console.log('[setLn] post data:' + postdata);
+		console.log('[setLn] post data:' + postdata);
 	}
 	req.write(postdata +  '\n');
 	req.end();
-}
-
-function getIndex(cb) {
-	var hostname = 'disk.yun.uc.cn';
-	
-	var path = '/';
-		
-	if (debug) {
-		console.log('[getIndex] url:' + hostname + path);
-	}
-	
-	var cookie = '';
-	for ( var field in cookieManger ){
-		cookie += field + '=' + cookieManger[field] + ';';
-	}
-	var options = {
-		hostname:hostname,
-		path:path,
-		method:'get',
-		headers: {  
-			'Accept':'application/json, text/javascript, */*; q=0.01',
-			'Accept-Encoding':'gzip, deflate, sdch',
-			'Accept-Language':'zh-CN,zh;q=0.8,en;q=0.6',
-			'Cache-Control':'no-cache',
-			'Connection':'keep-alive',
-            'Content-Type': 'application/json', 
-			'Pragma':'no-cache',
-			'User-Agent':'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.106 Safari/537.36',
-			'X-Requested-With':'XMLHttpRequest',
-			"Cookie": cookie
-        }
-	};
-	if(debug) {
-		console.log('[getIndex] headers cookie:' + cookie);
-	}
-	
-	var req = http.request(options,function(res) {
-		var statusCode = res.statusCode;
-		var headers = JSON.parse(JSON.stringify(res.headers));
-		var cookies = headers['set-cookie'];
-		praseCookie(cookies);
-		
-		if(debug) {
-			console.log('======= [getIndex] headers =======');
-			console.log(headers);
-			console.log('=============================================');
-		}
-		
-		if(!silent) {
-			console.log('[getIndex] status:' + statusCode);
-		}
-		
-		var chunks = [];
-		res.on('data', function (chunk) {  
-			  chunks.push(chunk);
-		});
-		
-		res.on('end',function() {
-			cb(chunks);
-		});
-	});
-
-	req.on('error', function (e) {
-		console.log('[getIndex] problem with request: ' + e.message);
-	});
-	
-	req.end();
+	return deferred.promise;
 }
 
 exports.login = login;
-exports.getCaptchaId = getCaptchaId;
 exports.getCaptcha = getCaptcha;
-exports.praseServiceTicket = praseServiceTicket;
 exports.getDirInfo = getDirInfo;
 exports.setServiceTicket = setServiceTicket;
 exports.setLn = setLn;
-exports.getIndex = getIndex;
