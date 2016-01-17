@@ -150,7 +150,8 @@ function login(name,pass,code) {
 		path:path,
 		method: 'POST',
 		headers: {  
-            "Content-Type": 'application/x-www-form-urlencoded'
+            'Content-Type': 'application/x-www-form-urlencoded',
+			'User-Agent':'Mozilla/5.0 (Linux; U; Android 5.1.1; zh-CN; N1 Build/A5CNB19) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 UCBrowser/10.8.5.689 U3/0.8.0 Mobile Safari/534.30'
         }  
 	};
 	
@@ -271,7 +272,7 @@ function getDirInfo(dir) {
 			'Connection':'keep-alive',
             'Content-Type': 'application/json', 
 			'Pragma':'no-cache',
-			'User-Agent':'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.106 Safari/537.36',
+			'User-Agent':'Mozilla/5.0 (Linux; U; Android 5.1.1; zh-CN; N1 Build/A5CNB19) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 UCBrowser/10.8.5.689 U3/0.8.0 Mobile Safari/534.30',
 			'X-Requested-With':'XMLHttpRequest',
 			"Cookie": cookie
         }
@@ -299,15 +300,26 @@ function getDirInfo(dir) {
 		
 		res.on('end',function() {
 			var buffer = Buffer.concat(chunks);
-			zlib.gunzip(buffer, function (err, decoded) {
-				var result = decoded.toString();
+			switch (headers['content-encoding']) {
+			case 'gzip':
+				zlib.gunzip(buffer, function (err, decoded) {
+					var result = decoded.toString();
+					if(debug) {
+						console.log('======= [getDirInfo] result =======');
+						console.log(result);
+						console.log('===================================');
+					}
+					deferred.resolve(result);
+				});
+				break;
+			default:
 				if(debug) {
 					console.log('======= [getDirInfo] result =======');
-					console.log(result);
+					console.log(chunks.toString());
 					console.log('===================================');
 				}
-				deferred.resolve(result);
-			});
+				deferred.resolve(chunks.toString());
+			}
 
 		});
 	});
