@@ -28,6 +28,17 @@ function setRead() {
 		).then(
 			function() { return api.setLn();},
 			function(error) { console.log(error.toString()); }
+		) .then(
+			function() { return api.getIndex();},
+			function(error) { console.log(error.toString()); }
+		) .then(
+			function(result) {
+				//console.log(result);
+				var urlrex = /\http:\/\/uc.dl.django.t.taobao.com\/cookie\/.*r=uc/ig;
+				var ret = result.match(urlrex);
+				return api.setDjangoUid(ret[0]);
+			},
+			function(error)  { console.log(error.toString()); }			
 		).then(
 			function() { return api.getDirInfo('1');},
 			function(error) { console.log(error.toString()); }

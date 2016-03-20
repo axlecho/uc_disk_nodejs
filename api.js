@@ -332,6 +332,91 @@ function getDirInfo(dir) {
 	return deferred.promise;
 }
 
+function getIndex() {
+    var deferred = Q.defer();
+	var hostname = 'disk.yun.uc.cn';
+	var path = '/';
+	
+	if (debug) {
+		console.log('[getIndex] url:' + hostname + path);
+	}
+	
+	var cookie = '';
+	for ( var field in cookieManger ){
+		cookie += field + '=' + cookieManger[field] + ';';
+	}
+	var options = {
+		hostname:hostname,
+		path:path,
+		method:'get',
+		headers: {  
+			'Accept':'application/json, text/javascript, */*; q=0.01',
+			'Accept-Encoding':'gzip, deflate, sdch',
+			'Accept-Language':'zh-CN,zh;q=0.8,en;q=0.6',
+			'Cache-Control':'no-cache',
+			'Connection':'keep-alive',
+            'Content-Type': 'application/json', 
+			'Pragma':'no-cache',
+			'User-Agent':'Mozilla/5.0 (Linux; U; Android 5.1.1; zh-CN; N1 Build/A5CNB19) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 UCBrowser/10.8.5.689 U3/0.8.0 Mobile Safari/534.30',
+			'X-Requested-With':'XMLHttpRequest',
+			"Cookie": cookie
+        }
+	};
+	if(debug) {
+		console.log('[getIndex] headers cookie:' + cookie);
+	}
+	var req = http.request(options,function(res) {
+		var statusCode = res.statusCode;
+		var headers = JSON.parse(JSON.stringify(res.headers));
+		var cookies = headers['set-cookie'];
+		if(debug) {
+			console.log('======= [getIndex] headers =======');
+			console.log(headers);
+			console.log('====================================');
+		}
+		if(!silent) {
+			console.log('[getIndex] status:' + statusCode);
+		}
+		
+		var chunks = [];
+		res.on('data', function (chunk) {  
+			  chunks.push(chunk);
+		});
+		
+		res.on('end',function() {
+			var buffer = Buffer.concat(chunks);
+			switch (headers['content-encoding']) {
+			case 'gzip':
+				zlib.gunzip(buffer, function (err, decoded) {
+					var result = decoded.toString();
+					if(debug) {
+						console.log('======= [getIndex] result =======');
+						console.log(result);
+						console.log('===================================');
+					}
+					deferred.resolve(result);
+				});
+				break;
+			default:
+				if(debug) {
+					console.log('======= [getIndex] result =======');
+					console.log(chunks.toString());
+					console.log('===================================');
+				}
+				deferred.resolve(chunks.toString());
+			}
+
+		});
+	});
+
+	req.on('error', function (e) {
+		deferred.reject('[getIndex] problem with request:' + e.message);
+	});
+	
+	req.end();
+	return deferred.promise;
+}
+
 function setServiceTicket() {
     var deferred = Q.defer();
 	var hostname = 'yun.uc.cn';
@@ -425,11 +510,31 @@ function setLn() {
 	return deferred.promise;
 }
 
+function setDjangoUid(url) {
+    var deferred = Q.defer();
+	var req = http.get(url,function(res) {
+		var statusCode = res.statusCode;
+		var headers = JSON.parse(JSON.stringify(res.headers));
+		var cookies = headers['set-cookie'];
+		praseCookie(cookies);
+		if(!silent) {
+			console.log('[setDjangoUid] status:' + statusCode);
+		}
+		deferred.resolve();
+	});
+
+	req.on('error', function (e) {
+		deferred.reject('[setDjangoUid] problem with request: ' + e.message);
+	});
+	req.end();
+	
+	return deferred.promise;	
+}
+
 function downloadFile(info) {
 
     var deferred = Q.defer();
-	//var url = info.download;
-	var url = 'http://uc.dl.django.t.taobao.com/rest/1.0/file?token=fwxJfSMqrRZ8Lt25MGMrLwABUYAAAAFTlHAizwAAABcAAQED&link-type=download-pc-low&fileIds=RjPXOrwjSri0eNTozyNnAwAAABcAAQID&timestamp=1458485775&uID=869193934&name=IB-IBW-351.jpg&r=pic&imei=&fr=&acl=2be62feb9469f2587ea17c9c213c1fc9'
+	var url = info.download;
 	var name = info.shortname;
 	
 	if (debug) {
@@ -443,6 +548,11 @@ function downloadFile(info) {
 	if(debug) {
 		console.log(result);
 	}
+	
+	var cookie = '';
+	cookie += 'UC_DJANGO_UID' + '=' + cookieManger['UC_DJANGO_UID'] + ';';
+	cookie += 'UC_DJANGO_ACL=';
+
 	var options = {
 		hostname: result[3],
 		path: '/' + result[5] + '?' + result[6],
@@ -454,7 +564,7 @@ function downloadFile(info) {
 			"User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.82 Safari/537.36" ,
 			"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8" ,
 			"Referer":" http://disk.yun.uc.cn/" ,
-			"Cookie": "thw=cn; cna=58grD0AU32QCAbcLsaq1uFXC; miid=7921626627275384669; uc3=sg2=UU3mAG65ttnxYwFbGeuXKm9oB6uCCgGDOtYTwa8igXs"%"3D&nk2=BvBeG3MGNwoN"%"2Bw"%"3D"%"3D&id2=Vyh5TiHQvWei&vt3=F8dASmw5E62LifRXScs"%"3D&lg2=V32FPkk"%"2Fw0dUvg"%"3D"%"3D; uss=Bqa1OpqxBD7VhAkJdfX953dPzHrY0FqdUUSg1G71D88PeSBpic5t"%"2BS6qAQ"%"3D"%"3D; lgc=echo000001; tracknick=echo000001; t=1f3f6f26aa16962f0b592296fd00bb95; _cc_=WqG3DMC9EA"%"3D"%"3D; tg=0; x=e"%"3D1"%"26p"%"3D*"%"26s"%"3D0"%"26c"%"3D0"%"26f"%"3D0"%"26g"%"3D0"%"26t"%"3D0"%"26__ll"%"3D-1"%"26_ato"%"3D0; l=Avv7iedWAQprLlbv3ggRT2LzC9VrFQ8y; UC_DJANGO_UID=d358f3594e01820bae3efca6a47a2675; UC_DJANGO_ACL=",
+			"Cookie": cookie,
 			"Connection": "keep-alive" 
         }
 	};
@@ -489,3 +599,5 @@ exports.getDirInfo = getDirInfo;
 exports.setServiceTicket = setServiceTicket;
 exports.setLn = setLn;
 exports.downloadFile = downloadFile;
+exports.getIndex = getIndex;
+exports.setDjangoUid = setDjangoUid;
