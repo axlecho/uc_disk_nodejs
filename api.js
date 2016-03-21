@@ -552,10 +552,24 @@ function downloadFile(info) {
 	var cookie = '';
 	cookie += 'UC_DJANGO_UID' + '=' + cookieManger['UC_DJANGO_UID'] + ';';
 	cookie += 'UC_DJANGO_ACL=';
-
+	
+	var params = result[6].split('&');
+	var urlParams = {}
+	for(var i = 0;i < params.length;i ++) {
+		var pair = params[i].split('=');
+		urlParams[pair[0]] = pair[1];
+	}
+	var host = result[3];
+	var path = '/' + result[5] + '?' +  qs.stringify(urlParams);
+	//var path = encodeURIComponent(path);
+	
+	if (debug) {
+		console.log('[downloadFile] host:' + host + ' path:' + path);
+	}
+	
 	var options = {
-		hostname: result[3],
-		path: '/' + result[5] + '?' + result[6],
+		hostname: host,
+		path: path,
 		headers: {  
             "Pragma": "no-cache" ,
 			"Accept-Encoding": "gzip, deflate, sdch" ,

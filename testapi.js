@@ -47,7 +47,7 @@ function setRead() {
 				result = decodeURIComponent(result);
 				o = JSON.parse(result);
 				//console.log(o);
-				return api.downloadFile(o.filelist[1]);
+				return api.downloadFile(o.filelist[2]);
 			},
 			function(error)  { console.log(error.toString()); }
 		).then(
