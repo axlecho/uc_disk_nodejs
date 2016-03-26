@@ -20,8 +20,8 @@ function setRead() {
 		}
 
 		captcha = captcha.replace(/\s+/g, '')
-		var user = 'axlecho@126.com';
-		var pass = '!me433978029';
+		var user = 'your count';
+		var pass = 'your password';
 		api.login(user,pass,captcha).then(
 			function() { return api.setServiceTicket();},
 			function(error) { console.log(error); }
